@@ -1,0 +1,311 @@
+This program is not a Number Theory realted program but it showcases the year end project of APSC 160. It is written in C
+and requires the daq module.
+
+/* Name: Victor 
+ * Purpose: To play the Simon game using the DAQ.
+ */
+
+//** THE SIMON GAME **//
+
+//Header Files:
+#include <stdio.h>
+#include <stdlib.h>
+#include <DAQlib.h>
+#include <Windows.h>
+#include <time.h>
+
+#define _CRT_SECURE_NO_WARNINGS
+
+//Constants used:
+#define ON 1
+#define OFF 0
+#define TRUE 1
+#define FALSE 0
+
+//Green light:
+#define LED0 0
+#define GREEN 0
+
+//Red light:
+#define LED1 1
+#define RED 1
+
+//Yellow Light:
+#define LED2 2
+#define YELLOW 2
+
+//Blue light:
+#define LED3 3
+#define BLUE 3
+
+#define MAXLEDS 3
+
+#define BUT0 0
+#define BUT1 1
+#define BUT2 2
+#define BUT3 3 
+#define MAXBUT 3
+
+#define MAXNUMCOLORS 3
+
+#define MAXSEQUENCE 5
+
+#define ONESEC 1000
+
+//Function Prototypes:
+void runSimon( void );
+int writeAndCheckLEDS( int randomSequenceArray[] );
+int checkButtons( void );
+void generateRandomSequence( int length, int randomSequenceArray[] );
+int randInt( int lowerbound, int upperbound );
+void displayColor( int ledToTurnOn );
+void getReady( void );
+void winner( void );
+void loser( void );
+int checkSeriesButtonPresses( int round, int randomSequenceArray[] );
+
+//Main Body:
+int main( void )
+{
+
+//Set up DAQ and run game:
+	int setUpNum;
+
+	printf("***************************\n*Welcome to the Simon Game*\n***************************\n\n\n");
+	printf("The rules are simple. Every round a random color will be displayed. Push the corresponding button such that the \ncolors match. After every round the existing pattern will repeat. Do not push any buttons until the pattern is complete.\nThree red flashes indicate a loss. Three green flashes indicate a win. The game will automatically reset.\n\n\n");
+//Gives the user time to read rules:
+	Sleep( ONESEC*10 );
+	printf( "Good luck! The game will flash all the lights three times to start you off...\n");
+			
+	printf( "Enter DAQ number (6 for Simon Game): " );
+	scanf( "%d", &setUpNum );
+
+	if( setupDAQ(setUpNum)==FALSE ) {
+		printf( "Error: DAQ failed to initialize" );
+		return 0;
+	}
+	else
+		runSimon();
+
+	printf("Thanks for playing!");
+	system( "PAUSE" );
+	return 0;
+
+}
+
+//This function runs the game. The superloop checks to see if user has quit the program. 
+void runSimon( void )
+{
+	int winOrLose;
+	int randomSequenceArray[ MAXSEQUENCE ]={0};
+
+	while( continueSuperLoop()==TRUE ){
+
+	//Prep the user with a 'get ready to begin sequence, which flashes all the lights three times. Essentially like a count down.
+		getReady();
+
+	//Seeding srand function for later use in generateRandomSequence and randInt functions.
+		srand( (unsigned) time( NULL ) );
+
+	//Aquire random sequence for game:
+		generateRandomSequence( MAXSEQUENCE, randomSequenceArray );
+
+	//Display the sequence on DAQ and read user imput. 
+		winOrLose = writeAndCheckLEDS( randomSequenceArray );
+
+	//Check if user won or lost the round and display appropriate sequence:
+		if( winOrLose == TRUE )
+			winner();
+		else
+			loser();
+
+	}
+}
+
+//This function checks to see if a button has been pressed by checking the states of all the buttons continuously (while loop). If so, the function returns which button was pressed. 
+int checkButtons( void )
+{
+	int buttonNumber;
+
+//This loop will continue running:
+	while( TRUE ){
+		
+	//Check all the buttons using a for-loop to see if they have been pushed. If the button returns ON, then its been pushed. 
+	//The use of a while loop ensures the user has released the button.
+		for( buttonNumber=0; buttonNumber <= BUT3; buttonNumber++ )
+
+			if( digitalRead( buttonNumber ) == ON ){
+
+				while( digitalRead( buttonNumber ) == ON ){
+					digitalWrite( buttonNumber, ON );
+				}
+
+				digitalWrite( buttonNumber, OFF);
+				return buttonNumber;
+			}
+	}
+}
+
+//This function generates an array with a random sequence of integers between 0 and 3. It then copies that array to randomSequenceArray.
+void generateRandomSequence( int length, int randomSequenceArray[] )
+{
+	int index;
+	int randomizedInt;
+
+	for( index=0; index < MAXSEQUENCE; index++ ){
+
+	//The lower bound is always 0:
+		randomizedInt = randInt( FALSE, MAXBUT );
+		randomSequenceArray[ index ]= randomizedInt; 
+	}
+}
+
+//This function generates the random integer and returns that integer. 
+int randInt(int lowerbound, int upperbound )
+{
+	return rand()%4;
+}
+
+//This function displays the pattern on the screen and reads the user's imput. It will return TRUE if user wins the round or FALSE if user pushes wrong button.
+int writeAndCheckLEDS(int randomSequenceArray[] )
+{
+	int round;
+	int ledToTurnOn;
+	int userAnswer;
+	int count=0;
+	int index;
+
+//Run through the sequence:
+	for( round=0; round<MAXSEQUENCE; round++ ){
+	//If first round of guesses display only the first colour:
+		if( round == 0 ){
+			displayColor( randomSequenceArray[ round ] );
+			
+			//Check user's answer:
+			userAnswer = checkButtons();
+			if( userAnswer != randomSequenceArray[ round ] )
+				return FALSE;
+		}
+		else{
+			for( index=0; index<=round; index++ ){
+				displayColor( randomSequenceArray[ index ] );
+			}
+			//Check user's answer (multiple button presses):
+			userAnswer = checkSeriesButtonPresses( round, randomSequenceArray );
+				if( userAnswer != TRUE )
+					return FALSE;
+	}
+	}
+	return TRUE;
+}
+
+//This Function displays the color requested;
+void displayColor( int ledToTurnOn ) 
+{
+
+//Pause for a split second before displaying color to give the user sometime to prepare:
+	Sleep( 250 );
+
+//Check which LED to write to:
+	if( ledToTurnOn == GREEN ){
+		digitalWrite( LED0, ON );
+		Sleep( ONESEC );
+		digitalWrite( LED0, OFF );
+	}
+	else if( ledToTurnOn == RED ){
+		digitalWrite( LED1, ON );
+		Sleep( ONESEC );
+		digitalWrite( LED1, OFF );
+	}
+	else if( ledToTurnOn == YELLOW ){
+		digitalWrite( LED2, ON );
+		Sleep( ONESEC );
+		digitalWrite( LED2, OFF );
+	}
+	else {
+		digitalWrite( BLUE, ON);
+		Sleep( ONESEC );
+		digitalWrite( LED3, OFF );
+	}
+}
+
+//This is the intro sequence. It flashes all the lights three times to signal a new round is about to begin.
+void getReady( void ) 
+{
+	int led;
+	int countDown;
+	
+	for( countDown=3; countDown > 0; countDown-- ){
+
+		for( led=0; led < 4; led++){
+			digitalWrite( led, ON );
+		}
+
+		Sleep( ONESEC );
+
+		for( led=0; led < 4; led++){
+			digitalWrite( led, OFF );
+		}
+		Sleep( ONESEC/2 );
+	}
+}
+
+//Displays the winning sequence, which is three flashes of the green led.
+void winner( void )
+{
+	int countDown;
+//This delay makes the sequence appear less abrubtly:
+	Sleep( 250 );
+
+	for( countDown=3; countDown > 0; countDown--){
+		digitalWrite( GREEN, ON );
+		Sleep( ONESEC );
+		digitalWrite( GREEN, OFF );
+		Sleep( ONESEC );
+	}
+}
+
+//Displays the losing sequence. Exactly the same as function above except red led flashes.
+void loser( void )
+{
+	int countDown;
+//This delay makes the sequence appear less abrubtly:
+	Sleep( 250 );
+
+	for( countDown=3; countDown > 0; countDown--){
+		digitalWrite( RED, ON );
+		Sleep( ONESEC );
+		digitalWrite( RED, OFF );
+		Sleep( ONESEC );
+	}
+}
+
+//This function checks the series of buttons pressed by user and stores them in an array. It takes the number of times the leds have flashed so far as a parameter, aka the round as well as randomSequenceArray. 
+//If that array matches the randomSequenceArray then the function returns TRUE. Otherwise the function returns FALSE. 
+int checkSeriesButtonPresses( int round, int randomSequenceArray[] )
+{
+//Assume user does not press buttons more times than MAXSEQUENCE.
+	int userImput[ MAXSEQUENCE ]={0};
+	int index=0;
+	int checkIndex;
+
+//This loop will run indefinitely.
+	while( TRUE ) {
+
+		userImput[ index ] = checkButtons();
+
+	//Once the array has filled up with the required number of values break from loop:
+		if( index == round )
+			break;
+		
+		index++;
+	}
+
+//Check to see if the two array's match:
+	for( checkIndex=0; checkIndex<=round; checkIndex++ ){
+		if( userImput[ checkIndex ] != randomSequenceArray[ checkIndex ] ){
+			return FALSE;
+		}
+	}
+	return TRUE;
+}
