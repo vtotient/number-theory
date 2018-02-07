@@ -1,10 +1,7 @@
 Written in python:
 
-#  Created by Victor
-#
-#  This program was adapted from exercises in Joseph H. Silverman's A Friendly Introduction to Number Theory and is
-#  designed to showcase the knowledge I learned about programming in APSC 160 and my own interests in
-#  mathematics. This is my first program in python.
+# This program was adapted from exercises in Joseph H. Silverman's A Friendly Introduction to Number Theory.
+# This is my first program in python.
 
 
 #  This function takes in as parameters a & b and returns the greatest common divisor. This is done using the
