@@ -4,13 +4,11 @@ Written in python:
 # and outputs the length of the chain.
 
 def Length(n):
-
+    
     count = 0
-
-    # Loop until n is equal to one. In other words keep the algoritim going until the chain terminates.
+    
     while n != 1:
 
-        # If even divide by two
         if n%2 == 0:
             n = n/2
 
@@ -21,8 +19,6 @@ def Length(n):
 
 
     return count
-
-# Main program:
 
 print("\n'Mathematics may not be ready for such problems.'\n     -Paul Erdos on the Collatz Conjecture.\n")
 
